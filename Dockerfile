@@ -18,7 +18,9 @@ FROM python:3.11-slim-bookworm
 WORKDIR /app
 
 ENV DEBIAN_FRONTEND=noninteractive
+# Para logs não bufferizados, garantindo que saiam imediatamente
 ENV PYTHONUNBUFFERED=1
+# O warning sobre PYTHONPATH indefinido aqui é geralmente aceitável
 ENV PYTHONPATH="/app:${PYTHONPATH}"
 
 COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
@@ -30,7 +32,7 @@ RUN pip install --upgrade pip setuptools wheel && \
 RUN playwright install-deps && \
     playwright install chromium
 
-# --- INÍCIO DAS MODIFICAÇÕES PARA XVFB e VNC ---
+# Instalar outras dependências do sistema, incluindo xvfb e fontes e x11vnc
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     xauth \
@@ -45,24 +47,42 @@ RUN apt-get update && \
     libxft2 \
     libfreetype6 \
     libfontconfig1 \
-    # Servidor VNC - x11vnc é uma boa opção para compartilhar um display X existente
     x11vnc \
-    # Opcional: um gerenciador de janelas leve se o x11vnc precisar ou para melhor visualização
-    # fluxbox \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-# --- FIM DAS MODIFICAÇÕES PARA XVFB e VNC ---
 
-# ... (Instalação do Node.js e Bitwarden CLI - se você ainda os usa) ...
-# ... (COPY ., ENV DATA_BASE_PATH, etc.) ...
+# Instalar Node.js e Bitwarden CLI (se realmente necessário para o runtime do backend)
+RUN mkdir -p /usr/local/nvm
+ENV NVM_DIR=/usr/local/nvm
+ENV NODE_VERSION=v20.12.2
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
+    /bin/bash -c "source ${NVM_DIR}/nvm.sh && \
+                  nvm install ${NODE_VERSION} && \
+                  nvm use --delete-prefix ${NODE_VERSION} && \
+                  npm install -g @bitwarden/cli@2024.9.0 && \
+                  bw --version"
+ENV NODE_PATH=${NVM_DIR}/versions/node/${NODE_VERSION}/bin
+ENV PATH=${NODE_PATH}:${PATH}
 
-# Expor a porta do VNC (além das portas da aplicação)
-# A porta padrão do VNC é 5900. Se o display for :0, x11vnc pode usar 5900.
-# Se o display for :99, x11vnc pode usar 5999 (5900 + número do display).
-# Vamos expor uma faixa ou uma porta específica que configuraremos.
-EXPOSE 8000 # API principal
-EXPOSE 9090 # MCP
-EXPOSE 5900 # Porta padrão para VNC (pode precisar ser ajustada)
+COPY . /app
+
+ENV DATA_BASE_PATH=/data
+ENV VIDEO_PATH=${DATA_BASE_PATH}/videos
+ENV HAR_PATH=${DATA_BASE_PATH}/har
+ENV LOG_PATH=${DATA_BASE_PATH}/log
+ENV ARTIFACT_STORAGE_PATH=${DATA_BASE_PATH}/artifacts
+
+ENV SKYVERN_MCP_ENABLED=true
+# Porta interna do contêiner para o MCP
+ENV MCP_PORT=9090
+
+# Expor as portas que a aplicação usa
+# API principal
+EXPOSE 8000
+# MCP
+EXPOSE 9090
+# Porta para VNC (calculada como 5900 + display_num (99) = 5999 no entrypoint)
+EXPOSE 5999
 
 COPY ./entrypoint-mcp.sh /app/entrypoint-mcp.sh
 RUN chmod +x /app/entrypoint-mcp.sh
