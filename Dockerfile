@@ -1,5 +1,4 @@
 FROM python:3.11 as requirements-stage
-
 WORKDIR /tmp
 RUN pip install poetry
 RUN poetry self add poetry-plugin-export
@@ -14,7 +13,7 @@ RUN pip install --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 RUN playwright install-deps
 RUN playwright install
-RUN apt-get install -y xauth x11-apps netpbm curl && apt-get clean
+RUN apt-get update && apt-get install -y xauth x11-apps netpbm curl && apt-get clean
 
 # nvm env vars
 RUN mkdir -p /usr/local/nvm
@@ -36,14 +35,22 @@ RUN npm install -g @bitwarden/cli@2024.9.0
 RUN bw --version
 
 COPY . /app
-
 ENV PYTHONPATH="/app:$PYTHONPATH"
 ENV VIDEO_PATH=/data/videos
 ENV HAR_PATH=/data/har
 ENV LOG_PATH=/data/log
 ENV ARTIFACT_STORAGE_PATH=/data/artifacts
 
-COPY ./entrypoint-skyvern.sh /app/entrypoint-skyvern.sh
-RUN chmod +x /app/entrypoint-skyvern.sh
+# Configuração MCP
+ENV SKYVERN_MCP_ENABLED=true
+ENV MCP_PORT=8080
 
-CMD [ "/bin/bash", "/app/entrypoint-skyvern.sh" ]
+# Exponha as portas necessárias
+EXPOSE 8000  # API principal
+EXPOSE 8080  # MCP
+
+# Crie o entrypoint para o MCP
+COPY ./entrypoint-mcp.sh /app/entrypoint-mcp.sh
+RUN chmod +x /app/entrypoint-mcp.sh
+
+CMD [ "/bin/bash", "/app/entrypoint-mcp.sh" ]
