@@ -1,47 +1,75 @@
+# Conteúdo para: alembic/env.py
+
 from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config, pool
-
+import os
+from sqlalchemy import engine_from_config, pool, create_engine
 from alembic import context
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Importar seus modelos SQLAlchemy para que o Alembic os reconheça para autogenerate
+# Você PRECISA ajustar este import para o caminho correto dos seus modelos no Skyvern.
+# Se o Skyvern usa um Base declarativo central, importe-o.
+# Exemplo: from skyvern.models import Base  # Ou skyvern.db.models, etc.
+# Se não, você pode precisar importar todos os seus modelos individualmente ou
+# configurar target_metadata de outra forma (ver documentação do Alembic).
+# Por enquanto, vamos deixar como None, o que significa que 'autogenerate' pode não funcionar
+# perfeitamente sem mais configuração, mas 'alembic upgrade head' ainda deve aplicar migrações existentes.
+target_metadata = None
+# try:
+#     from skyvern.forge.sdk.db.models import Base # Tente um caminho comum
+#     target_metadata = Base.metadata
+# except ImportError:
+#     print("ALEMBIC/ENV.PY: Não foi possível importar Base de skyvern.forge.sdk.db.models. Autogenerate pode ser limitado.")
+#     pass
+
+
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-from skyvern.forge.sdk.db import models
+def get_db_url_from_env():
+    """
+    Obtém a URL do banco de dados da variável de ambiente DATABASE_STRING
+    e a ajusta para uso síncrono pelo Alembic.
+    """
+    db_url = os.environ.get("DATABASE_STRING")
 
-target_metadata = models.Base.metadata
+    if not db_url:
+        # Fallback para sqlalchemy.url do alembic.ini se DATABASE_STRING não estiver definida
+        # (Não ideal, pois queremos que a variável de ambiente seja a fonte da verdade)
+        print("ALEMBIC/ENV.PY: DATABASE_STRING não encontrada no ambiente. Tentando ler de alembic.ini sqlalchemy.url...")
+        db_url = config.get_main_option("sqlalchemy.url")
+        if not db_url:
+            raise ValueError(
+                "DATABASE_STRING environment variable not set and sqlalchemy.url not found in alembic.ini"
+            )
+        print(f"ALEMBIC/ENV.PY: Usando sqlalchemy.url de alembic.ini: {db_url}")
+    else:
+        print(f"ALEMBIC/ENV.PY: Usando DATABASE_STRING da variável de ambiente: {db_url}")
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-from skyvern.forge.sdk.settings_manager import SettingsManager
+    # Garante que estamos usando um dialeto síncrono para o Alembic
+    # Isso é crucial se a DATABASE_STRING usa um dialeto async como psycopg_async ou asyncpg
+    if db_url.startswith("postgresql+psycopg_async://"):
+        db_url = db_url.replace("postgresql+psycopg_async://", "postgresql+psycopg://", 1)
+        print(f"ALEMBIC/ENV.PY: Convertido para URL síncrona (de psycopg_async): {db_url}")
+    elif db_url.startswith("postgresql+asyncpg://"):
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+        print(f"ALEMBIC/ENV.PY: Convertido para URL síncrona (de asyncpg): {db_url}")
+    
+    # Se já for postgresql:// ou postgresql+psycopg://, está bom.
+    if not (db_url.startswith("postgresql+psycopg://") or db_url.startswith("postgresql://")):
+        print(f"ALEMBIC/ENV.PY WARNING: URL do DB '{db_url}' não parece ser um dialeto psycopg síncrono padrão. Verifique.")
 
-config.set_main_option("sqlalchemy.url", SettingsManager.get_settings().DATABASE_STRING)
+    return db_url
+
+# Atualizar a configuração do Alembic para usar a URL do banco de dados da variável de ambiente
+# Isso garante que tanto run_migrations_offline quanto run_migrations_online usem a URL correta.
+effective_db_url = get_db_url_from_env()
+if effective_db_url:
+    config.set_main_option("sqlalchemy.url", effective_db_url)
 
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -55,17 +83,11 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # Usar a URL que já foi processada e definida em config.get_main_option
+    connectable_url = config.get_main_option("sqlalchemy.url")
+    
+    # Criar uma engine SÍNCRONA para o Alembic
+    connectable = create_engine(connectable_url)
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
@@ -74,7 +96,6 @@ def run_migrations_online() -> None:
             context.run_migrations()
 
 
-print("Alembic mode: ", "offline" if context.is_offline_mode() else "online")
 if context.is_offline_mode():
     run_migrations_offline()
 else:
