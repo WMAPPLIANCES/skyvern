@@ -26,8 +26,10 @@ WORKDIR /app
 
 # Definir variáveis de ambiente para o build (podem ser sobrescritas no runtime pelo Easypanel)
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1 # Para logs não bufferizados, garantindo que saiam imediatamente
-ENV PYTHONPATH="/app:${PYTHONPATH}" # O warning sobre PYTHONPATH indefinido aqui é geralmente aceitável
+# Para logs não bufferizados, garantindo que saiam imediatamente
+ENV PYTHONUNBUFFERED=1
+# O warning sobre PYTHONPATH indefinido aqui é geralmente aceitável
+ENV PYTHONPATH="/app:${PYTHONPATH}"
 
 # Copiar o requirements.txt do estágio anterior
 COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
