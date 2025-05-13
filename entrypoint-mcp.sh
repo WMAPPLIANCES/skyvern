@@ -8,5 +8,4 @@ python -m skyvern run server &
 sleep 5
 
 # Iniciar o MCP em foreground (sem a opção --port)
-# A porta é controlada pela variável de ambiente MCP_PORT
 exec python -m skyvern run mcp
