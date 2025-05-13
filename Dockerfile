@@ -1,11 +1,15 @@
 # Dockerfile para o backend Skyvern (API + MCP)
 
 # Estágio para instalar dependências usando Poetry
-FROM python:3.11 as requirements-stage
+FROM python:3.11 AS requirements-stage # Corrigido para AS maiúsculo
 WORKDIR /tmp
 
-# Instalar Poetry
+# Atualizar pip e instalar Poetry
+RUN pip install --upgrade pip
 RUN pip install poetry
+
+# Verificar a versão do Poetry (para debugging nos logs)
+RUN poetry --version
 
 # Copiar arquivos de definição de projeto e dependências
 # Se seus arquivos pyproject.toml e poetry.lock estão em um subdiretório (ex: 'backend'),
@@ -42,17 +46,17 @@ RUN apt-get update && \
 
 # Instalar Node.js e Bitwarden CLI (se realmente necessário para o runtime do backend)
 RUN mkdir -p /usr/local/nvm
-ENV NVM_DIR /usr/local/nvm
+ENV NVM_DIR=/usr/local/nvm # Formato corrigido
 # Mantenha a versão do Node atualizada conforme necessário ou use uma versão LTS estável
-ENV NODE_VERSION v20.12.2
+ENV NODE_VERSION=v20.12.2 # Formato corrigido
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-    /bin/bash -c "source $NVM_DIR/nvm.sh && \
-                  nvm install $NODE_VERSION && \
-                  nvm use --delete-prefix $NODE_VERSION && \
+    /bin/bash -c "source ${NVM_DIR}/nvm.sh && \
+                  nvm install ${NODE_VERSION} && \
+                  nvm use --delete-prefix ${NODE_VERSION} && \
                   npm install -g @bitwarden/cli@2024.9.0 && \
                   bw --version"
-ENV NODE_PATH $NVM_DIR/versions/node/$NODE_VERSION/bin
-ENV PATH $NODE_PATH:$PATH
+ENV NODE_PATH=${NVM_DIR}/versions/node/${NODE_VERSION}/bin # Formato corrigido e usando ${}
+ENV PATH=${NODE_PATH}:${PATH} # Formato corrigido e usando ${}
 
 # Copiar o restante do código da aplicação
 # Se seu código Python está em um subdiretório (ex: 'backend'), ajuste o COPY.
@@ -60,7 +64,7 @@ ENV PATH $NODE_PATH:$PATH
 COPY . /app
 
 # Configurar variáveis de ambiente da aplicação
-ENV PYTHONPATH="/app:$PYTHONPATH"
+ENV PYTHONPATH="/app:${PYTHONPATH}" # O warning sobre PYTHONPATH indefinido aqui é geralmente aceitável
 # Para logs não bufferizados, garantindo que saiam imediatamente
 ENV PYTHONUNBUFFERED=1
 
