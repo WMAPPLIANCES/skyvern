@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
-# Compilar o frontend para produção
-npm run build
+echo "Iniciando a UI do Skyvern..."
 
-# Servir o frontend compilado
+# Primeiro instale as dependências se necessário
+# npm install
+
+# Para ambiente de produção
+npm run build
 npm run preview -- --host 0.0.0.0 --port 80
