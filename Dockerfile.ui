@@ -1,22 +1,14 @@
-# Dockerfile para skyvern-frontend (UI)
 FROM node:20.12-slim
 WORKDIR /app
 
 # Copiar o código do frontend e o entrypoint
+# Assumindo que 'skyvern-frontend' é o diretório com package.json, vite.config.js, etc.
 COPY ./skyvern-frontend /app
 COPY ./entrypoint-skyvernui.sh /app/entrypoint-skyvernui.sh
 RUN chmod +x /app/entrypoint-skyvernui.sh
 
-# As variáveis de ambiente VITE_* serão definidas no Easypanel
-# e usadas pelo 'npm run build' dentro do entrypoint-skyvernui.sh.
-#
-# Exemplo de como elas seriam definidas no Easypanel:
-# VITE_API_BASE_URL=/api/v1
-# VITE_WSS_BASE_URL=wss://ui.skyvern.wmappliances.cloud/api/v1
-# VITE_ARTIFACT_API_BASE_URL=https://ui.skyvern.wmappliances.cloud:9090
-# VITE_SKYVERN_API_KEY=sua_chave_api_secreta
-
 # A porta que o 'vite preview' usará (conforme seu comando no entrypoint)
 EXPOSE 80
 
+# O entrypoint fará npm install, npm run build, e npm run preview
 CMD [ "/bin/bash", "/app/entrypoint-skyvernui.sh" ]
