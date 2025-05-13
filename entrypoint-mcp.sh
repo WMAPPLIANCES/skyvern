@@ -1,31 +1,23 @@
 #!/bin/bash
-set -e
 
-# Exibir as variáveis de ambiente (para depuração)
-echo "Porta MCP: $MCP_PORT"
-echo "SKYVERN_MCP_ENABLED: $SKYVERN_MCP_ENABLED"
+echo "Iniciando a API principal na porta 8000..."
+# Inicia a API em background
+uvicorn skyvern.main:app --host 0.0.0.0 --port 8000 &
 
-# Iniciar o servidor Skyvern em background
-python -m skyvern run server &
-SERVER_PID=$!
+# Aguarda um pouco para a API iniciar (opcional, pode não ser necessário)
+sleep 5
+echo "API (supostamente) iniciada."
 
-# Aguardar o servidor iniciar
-echo "Aguardando o servidor iniciar..."
-sleep 10
-
-# Verificar se o servidor está rodando
-if ps -p $SERVER_PID > /dev/null
-then
-   echo "Servidor iniciado com sucesso na porta 8000"
+# Verifica se o MCP deve ser iniciado
+if [ "$SKYVERN_MCP_ENABLED" = "true" ]; then
+  echo "Iniciando o MCP na porta $MCP_PORT..."
+  # Inicia o MCP em foreground (mantém o container vivo)
+  # Garanta que --host 0.0.0.0 está presente!
+  python -m skyvern run mcp --host 0.0.0.0 --port ${MCP_PORT:-9090}
 else
-   echo "Falha ao iniciar o servidor!"
-   exit 1
+  echo "MCP desabilitado. Aguardando processo da API..."
+  # Se só a API rodar, precisamos esperar o processo em background
+  wait $!
 fi
 
-# Mostrar ajuda do MCP para ver as opções disponíveis
-echo "Opções disponíveis para o MCP:"
-python -m skyvern run mcp --help
-
-# Iniciar o MCP sem opções adicionais
-echo "Iniciando o MCP..."
-exec python -m skyvern run mcp
+echo "Script finalizado." # Não deve chegar aqui se o MCP rodar em foreground
