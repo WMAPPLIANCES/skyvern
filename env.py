@@ -1,0 +1,79 @@
+# Environment that the agent will run in.
+ENV=local
+
+# LLM Provider Configurations:
+# ENABLE_OPENAI: Set to true to enable OpenAI as a language model provider.
+ENABLE_OPENAI=false
+# OPENAI_API_KEY: Your OpenAI API key for accessing models like GPT-4.
+OPENAI_API_KEY=""
+# OPENAI_API_BASE: Your OpenAI API Base url. Optional.
+# OPENAI_API_BASE=""
+# OPENAI_ORGANIZATION: Your OpenAI org-id. Optional.
+# OPENAI_ORGANIZATION=""
+
+# ENABLE_ANTHROPIC: Set to true to enable Anthropic as a language model provider.
+ENABLE_ANTHROPIC=false
+# ANTHROPIC_API_KEY: Your Anthropic API key for accessing models like Claude-3.
+ANTHROPIC_API_KEY=""
+
+# ENABLE_AZURE: Set to true to enable Azure as a language model provider.
+ENABLE_AZURE=false
+# AZURE_DEPLOYMENT: Your Azure deployment name for accessing specific models.
+AZURE_DEPLOYMENT=""
+# AZURE_API_KEY: Your API key for accessing Azure's language models.
+AZURE_API_KEY=""
+# AZURE_API_BASE: The base URL for Azure's API.
+AZURE_API_BASE=""
+# AZURE_API_VERSION: The version of Azure's API to use.
+AZURE_API_VERSION=""
+
+ENABLE_AZURE_GPT4O_MINI=false
+AZURE_GPT4O_MINI_DEPLOYMENT=""
+AZURE_GPT4O_MINI_API_KEY=""
+AZURE_GPT4O_MINI_API_BASE=""
+AZURE_GPT4O_MINI_API_VERSION=""
+
+# ENABLE_GEMINI: Set to true to enable Gemini as a language model provider.
+ENABLE_GEMINI=false
+# GEMINI_API_KEY: Your Gemini API key for accessing models like GPT-4.
+GEMINI_API_KEY=""
+
+# ENABLE_NOVITA: Set to true to enable Novita AI as a language model provider.
+ENABLE_NOVITA=false
+# NOVITA_API_KEY: Your Novita AI API key.
+NOVITA_API_KEY=""
+
+# LLM_KEY: The chosen language model to use. This should be one of the models
+# provided by the enabled LLM providers (e.g., OPENAI_GPT4_TURBO, OPENAI_GPT4V, ANTHROPIC_CLAUDE3, AZURE_OPENAI_GPT4V).
+LLM_KEY=""
+# a cheaper LLM providers to help finishing some small tasks, like custom selection or svg conversion. If empty, it will be the same as LLM_KEY
+SECONDARY_LLM_KEY=""
+
+# Web browser configuration for scraping:
+# BROWSER_TYPE: Can be either "chromium-headless" or "chromium-headful".
+BROWSER_TYPE="chromium-headful"
+# MAX_SCRAPING_RETRIES: Number of times to retry scraping a page before giving up, currently set to 0.
+MAX_SCRAPING_RETRIES=0
+# VIDEO_PATH: Path to the directory where videos will be saved.
+VIDEO_PATH=./videos
+# BROWSER_ACTION_TIMEOUT_MS: Timeout for browser actions in milliseconds.
+BROWSER_ACTION_TIMEOUT_MS=5000
+
+# Agent run configuration:
+# MAX_STEPS_PER_RUN: Maximum number of steps to execute per run unless the agent finishes with a terminal state (last step or error).
+MAX_STEPS_PER_RUN=50
+
+# Logging and database configuration:
+# LOG_LEVEL: Control log level (e.g., INFO, DEBUG).
+LOG_LEVEL=INFO
+# DATABASE_STRING: Database connection string.
+DATABASE_STRING="postgresql+psycopg://skyvern@localhost/skyvern"
+# PORT: Port to run the agent on.
+PORT=8000
+
+# Analytics configuration:
+# Distinct analytics ID (a UUID is generated if left blank).
+ANALYTICS_ID="anonymous"
+
+# Enable recording skyvern logs as artifacts
+ENABLE_LOG_ARTIFACTS=false
