@@ -1,28 +1,14 @@
 #!/bin/bash
 set -e
 
-echo "Porta MCP: $MCP_PORT"
-echo "SKYVERN_MCP_ENABLED: $SKYVERN_MCP_ENABLED"
+echo "Iniciando o servidor Skyvern..."
 
-echo "Iniciando a API principal na porta 8000..."
+# Iniciar o servidor Skyvern em background
 python -m skyvern run server &
-API_PID=$!
 
-echo "Aguardando o servidor iniciar..."
+# Aguardar o servidor iniciar
 sleep 10
 
-# Verificar se o servidor está rodando
-if ps -p $API_PID > /dev/null
-then
-   echo "Servidor iniciado com sucesso na porta 8000"
-else
-   echo "Falha ao iniciar o servidor!"
-   exit 1
-fi
-
-echo "Opções disponíveis para o MCP:"
-python -m skyvern run mcp --help
-
+# Iniciar o MCP (sem usar a opção --port)
 echo "Iniciando o MCP..."
-# Remova a opção --port, use apenas a variável de ambiente
 exec python -m skyvern run mcp
