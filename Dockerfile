@@ -1,4 +1,4 @@
-\FROM python:3.11 as requirements-stage
+FROM python:3.11 as requirements-stage
 WORKDIR /tmp
 RUN pip install poetry
 RUN poetry self add poetry-plugin-export
@@ -47,7 +47,7 @@ ENV MCP_PORT=9090
 
 # Exponha as portas necessárias
 EXPOSE 8000  # API principal
-EXPOSE 9090  # MCP (alterado de 8080 para 9090)
+EXPOSE 9090  # MCP
 
 # Crie o entrypoint para o MCP
 COPY ./entrypoint-mcp.sh /app/entrypoint-mcp.sh
