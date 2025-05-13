@@ -7,4 +7,5 @@ RUN npm install
 ENV VITE_API_BASE_URL=https://skyvern.wmappliances.cloud/api/v1
 ENV VITE_WSS_BASE_URL=wss://skyvern.wmappliances.cloud/api/v1
 ENV VITE_ARTIFACT_API_BASE_URL=https://skyvern.wmappliances.cloud:9090
+ENV VITE_API_KEY=AIzaSyCxAEw7Mkn5UpHuPtESrN_22AakcjlhJ1k
 CMD [ "/bin/bash", "/app/entrypoint-skyvernui.sh" ]
