@@ -7,5 +7,6 @@ python -m skyvern run server &
 # Aguardar alguns segundos para garantir que o servidor esteja funcionando
 sleep 5
 
-# Iniciar o MCP em foreground com a porta 9090
-exec python -m skyvern run mcp --port 9090
+# Iniciar o MCP em foreground (sem a opção --port)
+# A porta é controlada pela variável de ambiente MCP_PORT
+exec python -m skyvern run mcp
