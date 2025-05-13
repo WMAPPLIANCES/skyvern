@@ -4,90 +4,67 @@
 FROM python:3.11 AS requirements-stage
 WORKDIR /tmp
 
-# Atualizar pip e instalar uma versão específica do Poetry
 RUN pip install --upgrade pip
-RUN pip uninstall -y poetry || true # Tenta desinstalar qualquer versão existente
-RUN pip install poetry==1.8.2 # Instala uma versão recente e estável do Poetry
-
-# Verificar a versão do Poetry (para debugging nos logs)
+RUN pip uninstall -y poetry || true
+RUN pip install poetry==1.8.2
 RUN poetry --version
 
-# Copiar arquivos de definição de projeto e dependências
-# Ajuste os caminhos se seus arquivos estiverem em um subdiretório (ex: ./backend/)
 COPY ./pyproject.toml /tmp/pyproject.toml
 COPY ./poetry.lock /tmp/poetry.lock
-
-# Exportar dependências de produção para requirements.txt
 RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
 
 # Estágio final da imagem
 FROM python:3.11-slim-bookworm
 WORKDIR /app
 
-# Definir variáveis de ambiente para o build (podem ser sobrescritas no runtime pelo Easypanel)
 ENV DEBIAN_FRONTEND=noninteractive
-# Para logs não bufferizados, garantindo que saiam imediatamente
 ENV PYTHONUNBUFFERED=1
-# O warning sobre PYTHONPATH indefinido aqui é geralmente aceitável
 ENV PYTHONPATH="/app:${PYTHONPATH}"
 
-# Copiar o requirements.txt do estágio anterior
 COPY --from=requirements-stage /tmp/requirements.txt /app/requirements.txt
 
-# Instalar dependências Python do requirements.txt e adicionar alembic
 RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir --upgrade -r /app/requirements.txt && \
-    pip install alembic # <--- INSTALAR ALEMBIC DIRETAMENTE
+    pip install alembic
 
-# Instalar Playwright e suas dependências de sistema
 RUN playwright install-deps && \
-    playwright install # Você pode especificar navegadores aqui, ex: playwright install chromium
+    playwright install chromium
 
-# Instalar outras dependências do sistema
+# --- INÍCIO DAS MODIFICAÇÕES PARA XVFB e VNC ---
 RUN apt-get update && \
-    apt-get install -y xauth x11-apps netpbm curl && \
-    apt-get clean && \
+    apt-get install -y --no-install-recommends \
+    xauth \
+    x11-apps \
+    netpbm \
+    curl \
+    xvfb \
+    xfonts-base \
+    xfonts-75dpi \
+    xfonts-100dpi \
+    libxfont2 \
+    libxft2 \
+    libfreetype6 \
+    libfontconfig1 \
+    # Servidor VNC - x11vnc é uma boa opção para compartilhar um display X existente
+    x11vnc \
+    # Opcional: um gerenciador de janelas leve se o x11vnc precisar ou para melhor visualização
+    # fluxbox \
+    && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# --- FIM DAS MODIFICAÇÕES PARA XVFB e VNC ---
 
-# Instalar Node.js e Bitwarden CLI (se realmente necessário para o runtime do backend)
-RUN mkdir -p /usr/local/nvm
-ENV NVM_DIR=/usr/local/nvm
-ENV NODE_VERSION=v20.12.2
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-    /bin/bash -c "source ${NVM_DIR}/nvm.sh && \
-                  nvm install ${NODE_VERSION} && \
-                  nvm use --delete-prefix ${NODE_VERSION} && \
-                  npm install -g @bitwarden/cli@2024.9.0 && \
-                  bw --version"
-ENV NODE_PATH=${NVM_DIR}/versions/node/${NODE_VERSION}/bin
-ENV PATH=${NODE_PATH}:${PATH}
+# ... (Instalação do Node.js e Bitwarden CLI - se você ainda os usa) ...
+# ... (COPY ., ENV DATA_BASE_PATH, etc.) ...
 
-# Copiar o restante do código da aplicação
-# Ajuste o COPY se seu código Python estiver em um subdiretório (ex: ./backend)
-COPY . /app
+# Expor a porta do VNC (além das portas da aplicação)
+# A porta padrão do VNC é 5900. Se o display for :0, x11vnc pode usar 5900.
+# Se o display for :99, x11vnc pode usar 5999 (5900 + número do display).
+# Vamos expor uma faixa ou uma porta específica que configuraremos.
+EXPOSE 8000 # API principal
+EXPOSE 9090 # MCP
+EXPOSE 5900 # Porta padrão para VNC (pode precisar ser ajustada)
 
-# Caminhos para dados (mapear volumes persistentes no Easypanel para /data)
-ENV DATA_BASE_PATH=/data
-ENV VIDEO_PATH=${DATA_BASE_PATH}/videos
-ENV HAR_PATH=${DATA_BASE_PATH}/har
-ENV LOG_PATH=${DATA_BASE_PATH}/log
-ENV ARTIFACT_STORAGE_PATH=${DATA_BASE_PATH}/artifacts
-
-# Configuração MCP (Media Capture Processor)
-ENV SKYVERN_MCP_ENABLED=true
-# Porta interna do contêiner para o MCP
-ENV MCP_PORT=9090
-
-# Expor as portas que a aplicação usa
-# API principal
-EXPOSE 8000
-# MCP
-EXPOSE 9090
-
-# Copiar e dar permissão ao script de entrypoint
-# Ajuste o COPY se seu entrypoint-mcp.sh estiver em um subdiretório (ex: ./backend)
 COPY ./entrypoint-mcp.sh /app/entrypoint-mcp.sh
 RUN chmod +x /app/entrypoint-mcp.sh
 
-# Comando para iniciar a aplicação
 CMD [ "/bin/bash", "/app/entrypoint-mcp.sh" ]
