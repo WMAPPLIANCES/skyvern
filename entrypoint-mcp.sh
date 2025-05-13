@@ -9,13 +9,16 @@ python -m alembic upgrade head
 echo "ENTRYPOINT: Migrações do banco de dados (tentativa) concluídas."
 
 echo "ENTRYPOINT: Iniciando o servidor Skyvern (API Principal)..."
-python -m skyvern run server --port 8000 &
+# --- REMOVA O ARGUMENTO --port 8000 ---
+# O Skyvern deve usar a variável de ambiente PORT=8000
+python -m skyvern run server &
 SERVER_PID=$!
 
 echo "ENTRYPOINT: Servidor Skyvern (API Principal) iniciado com PID $SERVER_PID. Aguardando inicialização..."
-sleep 15
+sleep 15 # Dê tempo para o servidor principal iniciar completamente
 
 echo "ENTRYPOINT: Iniciando o MCP (Media Capture Processor)..."
+# O MCP usará a variável de ambiente MCP_PORT (que você definiu como 9090 no Easypanel)
 python -m skyvern run mcp &
 MCP_PID=$!
 
