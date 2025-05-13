@@ -41,7 +41,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Instalar Node.js e Bitwarden CLI (se realmente necessário para o runtime do backend)
-# Considere se estas ferramentas são apenas para desenvolvimento/build ou se o backend Python as utiliza diretamente.
 RUN mkdir -p /usr/local/nvm
 ENV NVM_DIR /usr/local/nvm
 # Mantenha a versão do Node atualizada conforme necessário ou use uma versão LTS estável
@@ -51,7 +50,7 @@ RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | b
                   nvm install $NODE_VERSION && \
                   nvm use --delete-prefix $NODE_VERSION && \
                   npm install -g @bitwarden/cli@2024.9.0 && \
-                  bw --version" # bw --version também inicializa a config
+                  bw --version"
 ENV NODE_PATH $NVM_DIR/versions/node/$NODE_VERSION/bin
 ENV PATH $NODE_PATH:$PATH
 
@@ -74,7 +73,8 @@ ENV ARTIFACT_STORAGE_PATH=${DATA_BASE_PATH}/artifacts
 
 # Configuração MCP (Media Capture Processor)
 ENV SKYVERN_MCP_ENABLED=true
-ENV MCP_PORT=9090 # Porta interna do contêiner para o MCP
+# Porta interna do contêiner para o MCP
+ENV MCP_PORT=9090
 
 # Expor as portas que a aplicação usa
 EXPOSE 8000 # API principal
