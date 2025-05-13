@@ -1,24 +1,22 @@
 #!/bin/bash
-set -e # Sair imediatamente se um comando falhar
+set -e
 
-echo "Iniciando a UI do Skyvern..."
+echo "Skyvern UI Entrypoint: Iniciando..."
 
-# Mude para o diretório da aplicação se não estiver lá (geralmente /app)
+# Navegar para o diretório da aplicação se necessário (geralmente /app)
 # cd /app
 
-echo "Instalando dependências (se necessário)..."
-# Se você não copiou node_modules no seu Dockerfile da UI, este passo é vital.
-# Considere adicionar --prefer-offline se as dependências já estiverem cacheadas
-# para acelerar, mas remova se estiver tendo problemas de dependência.
-npm install
+echo "Skyvern UI Entrypoint: Instalando dependências (npm install)..."
+npm install --prefer-offline --no-audit --progress=false
 
-echo "Limpando build anterior (se existir)..."
+echo "Skyvern UI Entrypoint: Limpando build anterior (rm -rf dist)..."
 rm -rf dist
 
-echo "Construindo a aplicação frontend com as variáveis de ambiente atuais..."
-# Este é o comando CRUCIAL que injeta VITE_SKYVERN_API_KEY no código
+echo "Skyvern UI Entrypoint: Construindo aplicação frontend (npm run build)..."
+# Este comando usa as variáveis VITE_* definidas no Easypanel
 npm run build
 
-echo "Iniciando o servidor de preview na porta 80..."
-# O host 0.0.0.0 permite que seja acessível de fora do contêiner
+echo "Skyvern UI Entrypoint: Iniciando servidor de preview (npm run preview)..."
 npm run preview -- --host 0.0.0.0 --port 80
+
+echo "Skyvern UI Entrypoint: Finalizado."
