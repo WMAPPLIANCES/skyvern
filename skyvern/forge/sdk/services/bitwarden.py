@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re
+import time # <--- ADICIONADO IMPORT TIME
 import urllib.parse
 from enum import IntEnum, StrEnum
 from typing import Tuple
@@ -24,8 +25,7 @@ from skyvern.exceptions import (
     BitwardenSyncError,
     BitwardenUnlockError,
 )
-# Removido import de aws_client, pois não vamos usá-lo nesta versão dummy
-# from skyvern.forge.sdk.api.aws import aws_client
+# Removido import de aws_client
 from skyvern.forge.sdk.core.aiohttp_helper import aiohttp_delete, aiohttp_get_json, aiohttp_post
 from skyvern.forge.sdk.schemas.credentials import (
     CredentialItem,
@@ -36,7 +36,6 @@ from skyvern.forge.sdk.schemas.credentials import (
 
 LOG = structlog.get_logger()
 
-# Esta URL não será realmente usada nas funções modificadas, mas a variável é referenciada.
 BITWARDEN_SERVER_BASE_URL = f"{settings.BITWARDEN_SERVER or 'http://localhost'}:{settings.BITWARDEN_SERVER_PORT or 8002}"
 
 
@@ -45,12 +44,6 @@ class BitwardenItemType(IntEnum):
     SECURE_NOTE = 2
     CREDIT_CARD = 3
     IDENTITY = 4
-
-# As funções get_bitwarden_item_type_code, get_list_response_item_from_bitwarden_item,
-# is_valid_email, BitwardenConstants, BitwardenQueryResult, RunCommandResult
-# podem permanecer as mesmas, pois são definições de tipo ou helpers que não fazem chamadas de rede.
-# Se alguma delas for chamada por código que não estamos "dummyficando", elas precisam estar aqui.
-# Para simplificar, vamos mantê-las.
 
 def get_bitwarden_item_type_code(item_type: BitwardenItemType) -> int:
     if item_type == BitwardenItemType.LOGIN:
@@ -61,13 +54,10 @@ def get_bitwarden_item_type_code(item_type: BitwardenItemType) -> int:
         return 3
     elif item_type == BitwardenItemType.IDENTITY:
         return 4
-    # Adicionado um else para cobrir todos os caminhos, embora improvável de ser chamado com esta modificação
     return 0 
 
 
 def get_list_response_item_from_bitwarden_item(item: dict) -> CredentialItem:
-    # Esta função provavelmente não será chamada se não listarmos itens do Bitwarden.
-    # Mas a mantemos para integridade estrutural.
     if item.get("type") == BitwardenItemType.LOGIN and "login" in item:
         login = item["login"]
         totp = BitwardenService.extract_totp_secret(login.get("totp", ""))
@@ -97,13 +87,12 @@ def get_list_response_item_from_bitwarden_item(item: dict) -> CredentialItem:
             credential_type=CredentialType.CREDIT_CARD,
         )
     else:
-        # Retornar um item dummy genérico para evitar quebrar se chamado inesperadamente
         LOG.warning(f"get_list_response_item_from_bitwarden_item chamada com tipo de item não suportado ou dados ausentes: {item.get('type')}")
         return CredentialItem(
             item_id=item.get("id", "dummy_unknown_id"),
-            credential=PasswordCredential(username="dummy", password="dummy", totp=""), # Genérico
+            credential=PasswordCredential(username="dummy", password="dummy", totp=""), 
             name=item.get("name", "Dummy Unknown Item"),
-            credential_type=CredentialType.PASSWORD, # Genérico
+            credential_type=CredentialType.PASSWORD, 
         )
 
 
@@ -151,14 +140,11 @@ class RunCommandResult(BaseModel):
 
 
 class BitwardenService:
-    # --- INÍCIO DAS MODIFICAÇÕES DUMMY ---
-
     @staticmethod
     async def run_command(
         command: list[str], additional_env: dict[str, str] | None = None, timeout: int = 60
     ) -> RunCommandResult:
         LOG.warning(f"BITWARDEN DUMMY: run_command chamado com: {' '.join(command)}. Retornando sucesso dummy.")
-        # Retorna um resultado de sucesso falso, como se o comando tivesse funcionado sem saída.
         return RunCommandResult(stdout="", stderr="", returncode=0)
 
     @staticmethod
@@ -177,7 +163,6 @@ class BitwardenService:
 
     @staticmethod
     def extract_totp_secret(totp_value: str) -> str:
-        # Esta função é um helper e pode ser mantida como está, pois não faz chamadas de rede.
         if not totp_value:
             return ""
         if totp_value.startswith("otpauth://"):
@@ -202,7 +187,6 @@ class BitwardenService:
     @staticmethod
     async def get_sensitive_information_from_identity(*args, **kwargs) -> dict[str, str]:
         LOG.warning("BITWARDEN DUMMY: get_sensitive_information_from_identity chamado. Retornando info dummy.")
-        # Retorna um dicionário com chaves esperadas, mas valores dummy
         identity_fields = kwargs.get("identity_fields", [])
         return {field: f"dummy_{field}_value" for field in identity_fields}
 
@@ -253,7 +237,6 @@ class BitwardenService:
     @staticmethod
     async def _unlock_using_server(master_password: str) -> None:
         LOG.warning(f"BITWARDEN DUMMY: _unlock_using_server chamado para o servidor {BITWARDEN_SERVER_BASE_URL}. Nenhuma chamada de rede real será feita.")
-        # Não faz nada para evitar a chamada HTTP para /status ou /unlock
         pass
 
     @staticmethod
@@ -285,24 +268,22 @@ class BitwardenService:
 
     @staticmethod
     async def create_credential_item(
-        collection_id: str, # Receberá "dummy_collection_id_..."
+        collection_id: str, 
         name: str,
         credential: PasswordCredential | CreditCardCredential,
     ) -> str:
         LOG.warning(f"BITWARDEN DUMMY: create_credential_item chamado para coleção '{collection_id}', nome '{name}'.")
         LOG.info(f"DADOS DA CREDENCIAL (NÃO SERÃO SALVOS DE FORMA SEGURA/FUNCIONAL): {credential.model_dump_json(exclude_none=True)}")
-        # Retorna um ID de item falso. O item não será salvo no Bitwarden.
+        # Corrigido para usar o módulo time importado
         return f"dummy_created_item_id_{name.replace(' ', '_')}_{str(time.time())[-5:]}"
 
 
-    # Funções para obter segredos de autenticação do Skyvern com Bitwarden
-    # Modificadas para retornar valores dummy e não tentar AWS se as env vars não estiverem setadas.
     @staticmethod
     async def _get_skyvern_auth_master_password() -> str:
         master_password = settings.SKYVERN_AUTH_BITWARDEN_MASTER_PASSWORD
         if not master_password:
             LOG.warning("BITWARDEN DUMMY: SKYVERN_AUTH_BITWARDEN_MASTER_PASSWORD não definida, retornando dummy.")
-            return "dummy_master_password_from_settings" # Evita erro "not set"
+            return "dummy_master_password_from_settings" 
         return master_password
 
     @staticmethod
@@ -334,9 +315,6 @@ class BitwardenService:
         name: str,
     ) -> str:
         LOG.warning(f"BITWARDEN DUMMY: create_collection chamado para nome '{name}'. Retornando ID de coleção dummy.")
-        # Não tenta mais chamar _get_skyvern_auth_secrets ou _unlock_using_server aqui diretamente
-        # pois create_credential_item já os chamaria (e eles são dummy).
-        # Apenas retorna um ID falso.
         return f"dummy_collection_id_for_{name.replace(' ', '_')}"
 
     @staticmethod
@@ -348,14 +326,11 @@ class BitwardenService:
     @staticmethod
     async def _get_skyvern_auth_secrets() -> Tuple[str, str, str, str]:
         LOG.warning("BITWARDEN DUMMY: _get_skyvern_auth_secrets chamado. Retornando todas as credenciais dummy.")
-        # Esta função agora é o ponto central para fornecer os dummies.
         master_password = settings.SKYVERN_AUTH_BITWARDEN_MASTER_PASSWORD or "dummy_master_password_default"
         bw_organization_id = settings.SKYVERN_AUTH_BITWARDEN_ORGANIZATION_ID or "dummy_org_id_default"
         client_id = settings.SKYVERN_AUTH_BITWARDEN_CLIENT_ID or "dummy_client_id_default"
         client_secret = settings.SKYVERN_AUTH_BITWARDEN_CLIENT_SECRET or "dummy_client_secret_default"
         
-        # Logar se alguma variável de ambiente específica do Bitwarden não estiver definida,
-        # para que você saiba que os defaults dummy estão sendo usados.
         if not settings.SKYVERN_AUTH_BITWARDEN_MASTER_PASSWORD:
             LOG.info("SKYVERN_AUTH_BITWARDEN_MASTER_PASSWORD não definida, usando default dummy.")
         if not settings.SKYVERN_AUTH_BITWARDEN_ORGANIZATION_ID:
@@ -366,9 +341,6 @@ class BitwardenService:
             LOG.info("SKYVERN_AUTH_BITWARDEN_CLIENT_SECRET não definida, usando default dummy.")
             
         return master_password, bw_organization_id, client_id, client_secret
-
-    # As funções abaixo provavelmente não serão chamadas se você só estiver tentando "Add Credential"
-    # e as funções acima já retornam valores dummy. Mas, por segurança, podemos torná-las dummy também.
 
     @staticmethod
     async def get_items_by_item_ids(item_ids: list[str]) -> list[CredentialItem]:
@@ -419,5 +391,3 @@ class BitwardenService:
     async def _delete_credential_item_using_server(item_id: str) -> None:
         LOG.warning(f"BITWARDEN DUMMY: _delete_credential_item_using_server chamado. Nenhuma ação real.")
         pass
-
-    # --- FIM DAS MODIFICAÇÕES DUMMY ---
