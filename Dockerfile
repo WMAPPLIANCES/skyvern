@@ -77,8 +77,10 @@ ENV SKYVERN_MCP_ENABLED=true
 ENV MCP_PORT=9090
 
 # Expor as portas que a aplicação usa
-EXPOSE 8000 # API principal
-EXPOSE 9090 # MCP
+# API principal
+EXPOSE 8000
+# MCP
+EXPOSE 9090
 
 # Copiar e dar permissão ao script de entrypoint
 # Se seu entrypoint-mcp.sh está em um subdiretório (ex: 'backend'), ajuste o COPY.
