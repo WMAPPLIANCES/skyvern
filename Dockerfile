@@ -1,4 +1,4 @@
-FROM python:3.11 as requirements-stage
+\FROM python:3.11 as requirements-stage
 WORKDIR /tmp
 RUN pip install poetry
 RUN poetry self add poetry-plugin-export
@@ -41,13 +41,13 @@ ENV HAR_PATH=/data/har
 ENV LOG_PATH=/data/log
 ENV ARTIFACT_STORAGE_PATH=/data/artifacts
 
-# Configuração MCP
+# Configuração MCP com porta alterada
 ENV SKYVERN_MCP_ENABLED=true
-ENV MCP_PORT=8080
+ENV MCP_PORT=9090
 
 # Exponha as portas necessárias
 EXPOSE 8000  # API principal
-EXPOSE 8080  # MCP
+EXPOSE 9090  # MCP (alterado de 8080 para 9090)
 
 # Crie o entrypoint para o MCP
 COPY ./entrypoint-mcp.sh /app/entrypoint-mcp.sh
